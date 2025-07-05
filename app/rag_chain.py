@@ -1,5 +1,7 @@
 
 
+
+
 import os
 import json
 import re # re 모듈 추가
@@ -8,7 +10,7 @@ from dotenv import load_dotenv
 from langchain_community.document_loaders import DirectoryLoader, UnstructuredMarkdownLoader
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
-from langchain.text_splitter import MarkdownHeaderTextSplitter
+from langchain.text_splitter import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter # RecursiveCharacterTextSplitter 추가
 from langchain.prompts import PromptTemplate
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.schema.output_parser import StrOutputParser
@@ -23,7 +25,7 @@ if "GOOGLE_API_KEY" not in os.environ:
 # --- 벡터 저장소 준비 (캐싱 및 일괄 처리 로직) ---
 
 # 2. FAISS 인덱스 파일 경로 정의
-vectorstore_path = "faiss_index_google"
+vectorstore_path = "faiss_index" # 경로명 변경
 
 # 3. 임베딩 모델 정의
 embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
@@ -37,23 +39,42 @@ else:
     # 인덱스 파일이 없으면, 문서를 처리하고 새로 생성
     print(f"'{vectorstore_path}'를 찾을 수 없습니다. 새로운 벡터 저장소를 생성합니다.")
     
-    # 데이터 로딩
-    data_path = "data/scraped_data"
-    loader = DirectoryLoader(data_path, glob="**/*.md", loader_cls=UnstructuredMarkdownLoader, show_progress=True)
-    docs = loader.load()
+    # --- JLPT 데이터 로딩 및 분할 ---
+    jlpt_data_path = "data/jlpt_data"
+    jlpt_loader = DirectoryLoader(jlpt_data_path, glob="**/*.md", loader_cls=UnstructuredMarkdownLoader, show_progress=True)
+    jlpt_docs = jlpt_loader.load()
 
-    # 문서 분할
     headers_to_split_on = [
         ("#", "Header 1"),
         ("##", "Header 2"),
     ]
     markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
-    docs_as_string = "\n\n".join(doc.page_content for doc in docs)
-    splits = markdown_splitter.split_text(docs_as_string)
+    jlpt_splits = []
+    for doc in jlpt_docs:
+        jlpt_splits.extend(markdown_splitter.split_text(doc.page_content))
+    print(f"JLPT 데이터에서 {len(jlpt_splits)}개의 청크를 생성했습니다.")
+
+    # --- Article 데이터 로딩 및 분할 ---
+    article_data_path = "data/article_data"
+    article_loader = DirectoryLoader(article_data_path, glob="**/*.md", loader_cls=UnstructuredMarkdownLoader, show_progress=True)
+    article_docs = article_loader.load()
+
+    article_text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,  # 청크 크기 (조절 가능)
+        chunk_overlap=200, # 청크 간 중복 (조절 가능)
+        length_function=len,
+        is_separator_regex=False,
+    )
+    article_splits = article_text_splitter.split_documents(article_docs)
+    print(f"Article 데이터에서 {len(article_splits)}개의 청크를 생성했습니다.")
+
+    # --- 모든 청크 결합 ---
+    all_splits = jlpt_splits + article_splits
+    print(f"총 {len(all_splits)}개의 청크를 임베딩합니다.")
 
     # 일괄 처리를 위한 텍스트 및 메타데이터 준비
-    texts = [doc.page_content for doc in splits]
-    metadatas = [doc.metadata for doc in splits]
+    texts = [doc.page_content for doc in all_splits]
+    metadatas = [doc.metadata for doc in all_splits]
     batch_size = 100 # 한 번에 처리할 문서 수 (API 제한에 따라 조절 가능)
 
     print(f"{len(texts)}개의 텍스트를 {batch_size}개씩 일괄 처리하여 벡터 저장소를 생성합니다.")
@@ -100,12 +121,24 @@ Follow this JSON structure precisely:
     {{"number": 4, "content": "string"}}
   ],
   "answer_number": "integer (from 1 to 4)",
-  "explanation": "string (detailed explanation of why the answer is correct and others are not)"}}
+  "explanation": "string (detailed explanation of why the answer is correct and others are not)"
+}}
 
+**CRITICAL INSTRUCTION: LANGUAGE REQUIREMENTS**
+- The **'explanation'** field **MUST** be written in **Korean**. This is a non-negotiable, strict requirement.
+- All other fields in the JSON output (problem_title_parent, problem_title_child, problem_content, and the 'content' within choices) **MUST** be in **Japanese**.
+
+**IMPORTANT INSTRUCTIONS FOR PROBLEM GENERATION:**
+- The user's request in the 'QUESTION' section will specify a particular **topic**, **question type**, and **content length**. You **MUST** strictly follow all these specifications.
+- For Reading Comprehension (読解), select a suitable passage from the CONTEXT that matches the requested **topic**.
+- The generated `problem_content` **MUST** match the requested **content length** (e.g., short, medium, or long passage).
+- Based on the selected passage, create a question that matches the requested **question type** (e.g., 'find the matching content', 'ask the reason', 'identify the author's claim').
+- Ensure the final problem is appropriate for the specified JLPT level.
 **IMPORTANT INSTRUCTIONS FOR EXPLANATION FIELD:**
-- The content of 'explanation' MUST be in Korean.
+- The content of 'explanation' MUST be in Korean. This is a strict requirement.
 - The format for each choice's explanation MUST be: "{{choice_number}}) {{choice_content}}: {{reason for being correct or incorrect}}".
 - Each explanation for a choice MUST be separated by a newline character (\n).
+- All other strings in the JSON output (problem_title_parent, problem_title_child, problem_content, choices content) MUST be in Japanese.
 
 CONTEXT:
 {context}
@@ -162,3 +195,4 @@ if __name__ == "__main__":
         print("오류: LLM이 유효한 JSON을 반환하지 않았습니다.")
         print(result_str)
     print("------------------------")
+

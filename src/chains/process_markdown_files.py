@@ -16,7 +16,7 @@ def process_all_md_files(folder_path):
 
 
 if __name__ == "__main__":
-    folder = "./data/scraped_data"  # 마크다운 파일들이 있는 경로
+    folder = "./data/jlpt_data"  # 마크다운 파일들이 있는 경로
     problems = process_all_md_files(folder)
     print(f"총 {len(problems)}개의 문제를 파싱했습니다.")
 

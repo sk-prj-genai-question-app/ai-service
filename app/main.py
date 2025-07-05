@@ -1,5 +1,6 @@
 
 import json
+import random
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
@@ -44,9 +45,40 @@ def generate_problem(request: ProblemRequest):
         "G": "文法", # 문법
         "R": "読解"  # 독해
     }.get(request.problem_type.upper(), "問題")
-    query = (f"日本語能力試験（JLPT）の{request.level.upper()}"
-            f"レベルに該当する{problem_type_jp}問題を1つ作成してください。"
-            )
+
+    # 독해 문제일 경우, 구체적인 주제, 질문 유형, 글 길이를 무작위로 추가
+    if request.problem_type.upper() == "R":
+        # 주제 목록
+        topics = [
+            "宗教", "社会", "心理", "技術", "外食", "環境", "歴史", "経済", 
+            "芸術", "教育", "科学", "健康", "政治", "文化"
+        ]
+        selected_topic = random.choice(topics)
+
+        # 질문 유형 목록
+        question_types = [
+            "本文の内容と一致するものを選ぶ問題",
+            "特定の表現の理由を問う問題",
+            "指示語が指す内容を問う問題",
+            "筆者の主張や意図を問う問題",
+            "文章の要旨を把握する問題"
+        ]
+        selected_question_type = random.choice(question_types)
+
+        # 글 길이 목록
+        content_lengths = ["短い文章(約200字)", "中程度の長さの文章(約700字)", "長い文章(約1500字)"]
+        selected_length = random.choice(content_lengths)
+
+        query = (f"日本語能力試験（JLPT）の{request.level.upper()}レベルに該当する、"
+                 f"「{selected_topic}」に関する読解問題を作成してください。"
+                 f"問題のタイプは「{selected_question_type}」で、文章の長さは「{selected_length}」にしてください。"
+                 f"作成する問題の「explanation」フィールドは、必ず韓国語で作成してください。"
+                 )
+    else:
+        query = (f"日本語能力試験（JLPT）の{request.level.upper()}"
+                 f"レベルに該当する{problem_type_jp}問題を1つ作成してください。"
+                 f"作成する問題の「explanation」フィールドは、必ず韓国語で作成してください。"
+                 )
 
     print(f"RAG 체인에 전달할 쿼리: {query}")
 
