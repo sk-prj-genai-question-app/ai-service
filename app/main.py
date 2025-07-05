@@ -1,6 +1,8 @@
 import json
 import random
-from fastapi import FastAPI
+import os
+import requests
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 # RAG 체인 모듈에서 rag_chain 객체를 임포트합니다.
@@ -12,6 +14,9 @@ app = FastAPI(
     description="LangChain과 RAG를 사용하여 JLPT 문제를 생성하는 API입니다.",
     version="1.0.0",
 )
+
+# 백엔드 API URL을 환경 변수에서 가져오거나 기본값 설정
+BACKEND_API_URL = os.getenv("BACKEND_API_URL", "http://localhost:8080/api/problems")
 
 # --- 요청 및 응답 모델 정의 ---
 
@@ -52,7 +57,7 @@ def generate_problem(request: ProblemRequest):
     if request.problem_type.upper() == "R":
         # 주제 목록
         topics = [
-            "宗教", "社会", "心理", "技術", "外食", "環境", "歴史", "経済", 
+            "宗教", "社会", "心理", "技術", "外食", "環境", "歴史", "経済",
             "芸術", "教育", "科学", "健康", "政治", "文化"
         ]
         selected_topic = random.choice(topics)
@@ -104,12 +109,33 @@ def generate_problem(request: ProblemRequest):
         # 응답 데이터에 level과 problem_type 추가
         result_json["level"] = request.level.upper()
         result_json["problem_type"] = request.problem_type.upper()
-        
+
+        # --- Add validation and logging before sending to backend ---
+        print(f"JSON to be sent to backend: {json.dumps(result_json, indent=2)}")
+
+        required_fields = ["level", "problem_type", "problem_title_parent", "choices", "answer_number", "explanation"]
+        for field in required_fields:
+            if field not in result_json or result_json[field] is None:
+                print(f"Validation Error: Missing or null required field '{field}' in generated problem JSON.")
+                raise HTTPException(status_code=500, detail=f"Generated problem JSON is missing or has null value for required field: {field}")
+
+        if not result_json.get("choices"): # choices 리스트가 비어있는 경우도 NotNull 위반으로 간주
+            print("Validation Error: 'choices' list is empty in generated problem JSON.")
+            raise HTTPException(status_code=500, detail="Generated problem JSON has empty 'choices' list.")
+
+        print(f"백엔드 API로 문제 전송: {BACKEND_API_URL}")
+        response = requests.post(BACKEND_API_URL, json=result_json)
+        response.raise_for_status() # HTTP 에러 발생 시 예외 발생
+
+        print("문제가 백엔드에 성공적으로 전송되었습니다.")
+
         return result_json
     except json.JSONDecodeError:
         print("JSON 파싱 오류 발생. 원본 출력:", result_str)
-        # 여기서는 간단하게 에러 메시지를 포함한 응답을 반환
-        return {"error": "Failed to parse LLM output as JSON", "raw_output": result_str}
+        raise HTTPException(status_code=500, detail=f"Failed to parse LLM output as JSON: {result_str}")
+    except requests.exceptions.RequestException as e:
+        print(f"백엔드 전송 오류 발생: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to send problem to backend: {e}")
 
 # 서버 상태 확인을 위한 루트 엔드포인트
 @app.get("/", summary="서버 상태 확인")
