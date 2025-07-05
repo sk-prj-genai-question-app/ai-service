@@ -7,3 +7,7 @@ langchain-openai
 openai
 pydantic
 langserve
+langchain-google-genai
+faiss-cpu
+unstructured
+markdown
