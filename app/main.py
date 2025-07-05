@@ -1,4 +1,3 @@
-
 import json
 import random
 from fastapi import FastAPI
@@ -23,10 +22,13 @@ class ProblemRequest(BaseModel):
 class Choice(BaseModel):
     number: int
     content: str
+    is_correct: bool
 
 class ProblemResponse(BaseModel):
+    level: str
+    problem_type: str
     problem_title_parent: str
-    problem_title_child: str | None # None 허용하도록 수정
+    problem_title_child: str | None
     problem_content: str | None
     choices: list[Choice]
     answer_number: int
@@ -92,6 +94,17 @@ def generate_problem(request: ProblemRequest):
     try:
         # 문자열 결과를 JSON 객체로 변환
         result_json = json.loads(result_str)
+
+        # answer_number를 기준으로 is_correct 필드 추가
+        answer_number = result_json.get("answer_number")
+        if answer_number:
+            for choice in result_json.get("choices", []):
+                choice["is_correct"] = (choice.get("number") == answer_number)
+
+        # 응답 데이터에 level과 problem_type 추가
+        result_json["level"] = request.level.upper()
+        result_json["problem_type"] = request.problem_type.upper()
+        
         return result_json
     except json.JSONDecodeError:
         print("JSON 파싱 오류 발생. 원본 출력:", result_str)
