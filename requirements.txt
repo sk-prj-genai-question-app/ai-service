@@ -3,11 +3,10 @@ uvicorn
 python-dotenv
 langchain
 langchain-community
-langchain-openai
 openai
-pydantic
-langserve
+langchain-openai
 langchain-google-genai
+pydantic
 faiss-cpu
 unstructured
 markdown

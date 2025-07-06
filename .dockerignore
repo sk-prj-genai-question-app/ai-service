@@ -1,0 +1,24 @@
+# Git 관련 파일
+.git
+.gitignore
+
+# Docker 관련 파일
+Dockerfile
+.dockerignore
+
+# Python 가상 환경
+.venv
+venv/
+
+# Python 캐시
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE 및 에디터 설정
+.idea/
+.vscode/
+
+# 환경 변수 파일 (보안)
+.env
