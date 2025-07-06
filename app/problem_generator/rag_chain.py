@@ -1,12 +1,12 @@
 import os
 import json
-import re # re 모듈 추가
+import re
 from dotenv import load_dotenv
 
 from langchain_community.document_loaders import DirectoryLoader, UnstructuredMarkdownLoader
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
-from langchain.text_splitter import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter # RecursiveCharacterTextSplitter 추가
+from langchain.text_splitter import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 from langchain.prompts import PromptTemplate
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.schema.output_parser import StrOutputParser
@@ -21,7 +21,7 @@ if "GOOGLE_API_KEY" not in os.environ:
 # --- 벡터 저장소 준비 (캐싱 및 일괄 처리 로직) ---
 
 # 2. FAISS 인덱스 파일 경로 정의
-vectorstore_path = "faiss_index" # 경로명 변경
+vectorstore_path = "faiss_index"
 
 # 3. 임베딩 모델 정의
 embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
@@ -93,7 +93,6 @@ retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
 # --- 프롬프트 및 LLM 체인 ---
 
 # 6. 프롬프트 템플릿 정의
-# (이전과 동일)
 template = """
 You are an expert JLPT tutor. Your task is to create a new, original Japanese Language Proficiency Test (JLPT) problem based on the provided context examples.
 The generated problem must be in the same style and level as the context.
@@ -175,9 +174,12 @@ rag_chain = (
 if __name__ == "__main__":
     import re # 정규 표현식 모듈 임포트
     # 이 스크립트를 직접 실행하여 체인을 테스트합니다.
-    print("RAG Chain을 테스트합니다. 'N1 어휘 문제 하나 만들어줘' 요청을 실행합니다...")
+    print("RAG Chain을 테스트합니다. N1 어휘 문제 1개를 생성하는 요청을 실행합니다...")
 
-    test_query = "N1 어휘 문제 하나 만들어줘"
+    test_query = ("日本語能力試験（JLPT）のN1"
+                 "レベルに該当する、語彙問題を1つ作成してください。"
+                 "作成する問題の「explanation」フィールドは、必ず韓国語で作成してください。"
+                 )
     
     # 테스트 쿼리를 체인에 전달
     result_str = rag_chain.invoke(test_query)
