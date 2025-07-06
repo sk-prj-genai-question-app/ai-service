@@ -1,6 +1,7 @@
 
 from fastapi import FastAPI
 from .problem_generator.router import router as problem_generator_router
+from .chatbot.router import router as chatbot_router
 
 # FastAPI 애플리케이션 인스턴스 생성
 app = FastAPI(
@@ -12,9 +13,8 @@ app = FastAPI(
 # 문제 생성기 라우터 포함
 app.include_router(problem_generator_router)
 
-# 여기에 나중에 챗봇 라우터를 추가할 수 있습니다.
-# from .chatbot.router import router as chatbot_router
-# app.include_router(chatbot_router)
+# 챗봇 라우터 포함
+app.include_router(chatbot_router)
 
 # 서버 상태 확인을 위한 루트 엔드포인트
 @app.get("/", summary="서버 상태 확인")
