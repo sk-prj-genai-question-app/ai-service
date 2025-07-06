@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+python-dotenv
+langchain
+langchain-community
+openai
+langchain-openai
+langchain-google-genai
+pydantic
+faiss-cpu
+unstructured
+markdown
