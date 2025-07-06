@@ -3,7 +3,7 @@ import json
 import random
 import os
 import requests
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Path, Body
 from pydantic import BaseModel, Field
 
 # RAG 체인 모듈에서 rag_chain 객체를 임포트합니다.
@@ -41,8 +41,8 @@ class ProblemResponse(BaseModel):
 
 # --- API 엔드포인트 정의 ---
 
-@router.post("/generate", response_model=ProblemResponse, summary="새로운 JLPT 문제 생성")
-def generate_problem(request: ProblemRequest):
+@router.post("/generate/{user_id}", response_model=ProblemResponse, summary="새로운 JLPT 문제 생성")
+def generate_problem(user_id: int = Path(..., description="문제를 생성할 사용자의 ID", example=1), request: ProblemRequest = Body(...)):
     """
     사용자로부터 JLPT 레벨과 문제 유형을 받아, RAG 체인을 통해 새로운 문제를 생성하고 반환합니다.
     """
@@ -110,6 +110,19 @@ def generate_problem(request: ProblemRequest):
         result_json["level"] = request.level.upper()
         result_json["problem_type"] = request.problem_type.upper()
 
+        # 백엔드로 보낼 최종 JSON 데이터 생성
+        data_to_send_to_backend = {
+            "user_id": user_id, # Path Parameter로 받은 user_id를 여기에 추가
+            "level": result_json.get("level"),
+            "problem_type": result_json.get("problem_type"),
+            "problem_title_parent": result_json.get("problem_title_parent"),
+            "problem_title_child": result_json.get("problem_title_child"),
+            "problem_content": result_json.get("problem_content"),
+            "choices": result_json.get("choices"),
+            "answer_number": result_json.get("answer_number"),
+            "explanation": result_json.get("explanation")
+        }
+
         # --- Add validation and logging before sending to backend ---
         print(f"JSON to be sent to backend: {json.dumps(result_json, indent=2)}")
 
@@ -124,7 +137,7 @@ def generate_problem(request: ProblemRequest):
             raise HTTPException(status_code=500, detail="Generated problem JSON has empty 'choices' list.")
 
         print(f"백엔드 API로 문제 전송: {BACKEND_API_URL}")
-        response = requests.post(BACKEND_API_URL, json=result_json)
+        response = requests.post(BACKEND_API_URL, json=data_to_send_to_backend)
         response.raise_for_status() # HTTP 에러 발생 시 예외 발생
 
         print("문제가 백엔드에 성공적으로 전송되었습니다.")
