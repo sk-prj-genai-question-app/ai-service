@@ -5,6 +5,7 @@ import os
 import requests
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+from datetime import datetime
 
 # RAG 체인 모듈에서 rag_chain 객체를 임포트합니다.
 from .rag_chain import rag_chain
@@ -25,23 +26,35 @@ class ProblemRequest(BaseModel):
     problem_type: str = Field(..., description="문제 유형 (V: 어휘, G: 문법, R: 독해)", example="G")
 
 class Choice(BaseModel):
+    id: int | None = None
     number: int
     content: str
-    is_correct: bool
+    isCorrect: bool
 
-class ProblemResponse(BaseModel):
+class ProblemDetailResponse(BaseModel):
+    id: int | None = None
     level: str
-    problem_type: str
-    problem_title_parent: str
-    problem_title_child: str | None
-    problem_content: str | None
+    problem_type: str = Field(..., alias="problemType") # problemType from backend, problem_type in Pydantic
+    problem_title_parent: str = Field(..., alias="problemTitleParent")
+    problem_title_child: str | None = Field(None, alias="problemTitleChild")
+    problem_content: str | None = Field(None, alias="problemContent")
     choices: list[Choice]
-    answer_number: int
+    answer_number: int = Field(..., alias="answerNumber")
     explanation: str
+    createdAt: datetime | None = Field(None, alias="createdAt")
+    updatedAt: datetime | None = Field(None, alias="updatedAt")
+
+class ApiResponseWrapper(BaseModel):
+    success: bool
+    code: int
+    data: ProblemDetailResponse
+    message: str
+    timestamp: datetime
+    requestId: str
 
 # --- API 엔드포인트 정의 ---
 
-@router.post("/generate", response_model=ProblemResponse, summary="새로운 JLPT 문제 생성")
+@router.post("/generate", response_model=ApiResponseWrapper, summary="새로운 JLPT 문제 생성")
 def generate_problem(request: ProblemRequest):
     """
     사용자로부터 JLPT 레벨과 문제 유형을 받아, RAG 체인을 통해 새로운 문제를 생성하고 반환합니다.
@@ -118,6 +131,10 @@ def generate_problem(request: ProblemRequest):
             if field not in result_json or result_json[field] is None:
                 print(f"Validation Error: Missing or null required field '{field}' in generated problem JSON.")
                 raise HTTPException(status_code=500, detail=f"Generated problem JSON is missing or has null value for required field: {field}")
+            # Additional check for empty strings for relevant fields
+            if field in ["level", "problem_type", "problem_title_parent", "explanation"] and isinstance(result_json[field], str) and not result_json[field].strip():
+                print(f"Validation Error: Required string field '{field}' is empty in generated problem JSON.")
+                raise HTTPException(status_code=500, detail=f"Generated problem JSON has empty value for required string field: {field}")
 
         if not result_json.get("choices"): # choices 리스트가 비어있는 경우도 NotNull 위반으로 간주
             print("Validation Error: 'choices' list is empty in generated problem JSON.")
@@ -127,9 +144,15 @@ def generate_problem(request: ProblemRequest):
         response = requests.post(BACKEND_API_URL, json=result_json)
         response.raise_for_status() # HTTP 에러 발생 시 예외 발생
 
-        print("문제가 백엔드에 성공적으로 전송되었습니다.")
+        print(f"백엔드 응답 상태 코드: {response.status_code}")
+        print(f"백엔드 응답 본문: {response.text}")
 
-        return result_json
+        backend_response_data = response.json()
+
+        print(f"문제가 백엔드에 성공적으로 전송되었습니다. 응답 데이터: {backend_response_data}")
+
+        # 프론트엔드에 백엔드 응답의 data 부분을 반환
+        return backend_response_data
     except json.JSONDecodeError:
         print("JSON 파싱 오류 발생. 원본 출력:", result_str)
         raise HTTPException(status_code=500, detail=f"Failed to parse LLM output as JSON: {result_str}")
