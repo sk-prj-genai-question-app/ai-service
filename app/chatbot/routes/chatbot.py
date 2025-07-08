@@ -20,7 +20,7 @@ def format_docs(docs: list[Document]) -> str:
 format_docs_runnable = RunnableLambda(format_docs)
 
 # 3) 프롬프트 템플릿
-template = """
+template_problem = """
 당신은 JLPT(N1~N3 수준) 일본어 문제를 생성하는 전문가이자 교사입니다.
 
 사용자의 요청을 다음과 같이 처리하십시오:
@@ -31,12 +31,19 @@ template = """
 ---
 
 **IMPORTANT INSTRUCTIONS FOR PROBLEM STRUCTURE:**
-- problem_title_parent: 문제 세트의 공통 지시문
-- problem_title_child: 개별 문제의 문장
-- problem_content: 독해 문제용 지문, 문법/어휘 문제의 경우 null로 설정
-- choices: 보기 4개
-- answer_number: 정답 번호 (1~4)
-- explanation: 반드시 한국어로 작성
+{{
+  "type": "problem",
+  "problems": [
+    {
+      "problem_title_parent": 문제 세트의 공통 지시문,
+      "problem_title_child": 개별 문제의 문장,
+      "problem_content": 독해 문제용 지문, 문법/어휘 문제의 경우 null로 설정,
+      "choices": 보기 4개,
+      "answer_number": 정답 번호 (1~4),
+      "explanation": 반드시 한국어로 작성
+    }
+  ]
+}}
 
 ---
 
@@ -51,16 +58,44 @@ template = """
 {chat_history}
 """
 
-prompt = PromptTemplate(
-    template=template,
+template_generation = """
+당신은 일본어 관련 응답을 해주는 전문가이자 교사입니다.
+
+사용자는 일본어와 관련된 질문을 합니다. 아래 형식에 따라 JSON 형식으로 답변을 생성해주세요.
+사용자 질문: {question}
+
+이전에 했던 질의 : {chat_history}
+
+{{
+    "type": "",
+    "answer": "..."
+}}
+
+"""
+
+# 문제 생성 관련 프롬프트
+problemPrompt = PromptTemplate(
+    template=template_problem,
     input_variables=["question", "context", "chat_history"]
+)
+
+# 일반 질문 관련 프롬프트
+generationPrompt = PromptTemplate(
+    template=template_generation,
+    input_variables=["question", "chat_history"]
 )
 
 # 4) LLM 및 파싱 함수
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
 json_parser = StrOutputParser()
 
-def clean_json(text: str) -> str:
+# def clean_json(text: str) -> str:
+#     if text.strip().startswith("```json"):
+#         return text.strip().removeprefix("```json").removesuffix("```").strip()
+#     return text.strip()
+
+def clean_json(message) -> str:
+    text = message.content if hasattr(message, "content") else message
     if text.strip().startswith("```json"):
         return text.strip().removeprefix("```json").removesuffix("```").strip()
     return text.strip()
@@ -69,26 +104,43 @@ clean_json_runnable = RunnableLambda(clean_json)
 
 # 5) RAG 파이프라인
 retrieval_chain = retriever | format_docs_runnable
-rag_chain = (
+prag_chain = (
     {
         "context": retrieval_chain,
         "question": RunnablePassthrough(),
         "chat_history": RunnablePassthrough()
     }
-    | prompt
+    | problemPrompt
     | llm
     | clean_json_runnable
     | json_parser
+)
+
+grag_chain = (
+    {
+        "question": RunnablePassthrough(),
+        "chat_history": RunnablePassthrough()
+    }
+    | generationPrompt
+    | llm
+    | clean_json_runnable
 )
 
 # 6) 문제 생성 요청 여부 판단
 def is_generation_request(question: str) -> bool:
     return any(keyword in question for keyword in ["문제", "출제", "만들어", "생성", "개 만들어"])
 
+# 서버가 살아있는 동안 유지되는 메모리 기반 chat_history 저장소
+chat_histories = {}
+
 # 7) FastAPI 라우터
 @router.post("/ask")
-def ask_question(request: QuestionRequest):
-    chat_history = ""  # 필요시 확장
+def ask_question(request: QuestionRequest, user_id: str): # user_id는 추후에 바꿀 예정
+    
+    # user_id는 클라이언트가 매 요청에 함께 보내야 함
+    chat_history = chat_histories.get(user_id, "")
+
+    #chat_history = ""  # 필요시 확장
     inputs = {
         "question": request.question,
         "chat_history": chat_history
@@ -96,13 +148,15 @@ def ask_question(request: QuestionRequest):
 
     if is_generation_request(request.question):
         try:
-            result = rag_chain.invoke(inputs)
-            return {"answer": result}
+            result = prag_chain.invoke(inputs)
         except Exception as e:
             return {
                 "answer": str(e),
                 "warning": "문제 생성 또는 JSON 파싱에 실패했습니다. 원시 문자열로 반환합니다."
             }
     else:
-        result = llm.invoke(request.question)
-        return {"answer": result}
+        result = grag_chain.invoke(inputs)
+        
+    # 대화 누적 (간단한 형식, 필요하면 포맷 조절 가능)
+    chat_histories[user_id] = chat_history + f"\n사용자: {request.question}\n어시스턴트: {result}"
+    return {"chat": result}
