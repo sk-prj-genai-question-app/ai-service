@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routes import chatbot
+from routes import chatbot, question_router
 
 app = FastAPI(
     title="JLPT Chatbot API",
@@ -7,4 +7,5 @@ app = FastAPI(
     version="1.0.0"
 )
 
-app.include_router(chatbot.router, prefix="/api")
+#app.include_router(question_router.router, prefix="/api")
+app.include_router(question_router.router, prefix="/api")
