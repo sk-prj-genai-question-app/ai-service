@@ -7,14 +7,12 @@ from langchain.schema import Document
 from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.output_parsers import JsonOutputParser
-from pydantic import BaseModel
 from langchain.output_parsers import PydanticOutputParser
-import json
 import re
 
 router = APIRouter()
 
-# 1) 벡터스토어 및 retriever
+# 벡터스토어 및 retriever
 vectorstore = get_vectorstore()
 retriever = vectorstore.as_retriever()
 
@@ -38,8 +36,7 @@ def format_docs_limited(docs: list[Document], max_length: int = 1500) -> str:
 format_docs_runnable = RunnableLambda(lambda docs: format_docs_limited(docs, max_length=1500))
 
 
-
-# 3) 프롬프트 템플릿
+# 프롬프트 템플릿
 template_problem = """
 당신은 JLPT(N1~N3 수준) 일본어 문제를 생성하는 전문가이자 교사입니다.
 
@@ -107,12 +104,11 @@ generationPrompt = PromptTemplate(
     input_variables=["question", "chat_history"]
 )
 
-# 4) LLM 및 파싱 함수
+# LLM 및 파싱 함수
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
 json_parser = JsonOutputParser()
 
-#######################################################
-
+# llm 응답 정리
 def clean_json(message):
     try:
         text = message if isinstance(message, str) else str(message)
@@ -121,8 +117,6 @@ def clean_json(message):
 
         # unicode_escape로 이스케이프된 문자들 (\\n, \\' 등) 한 번 해제
         text = codecs.decode(text, 'unicode_escape')
-
-        # 작은따옴표가 키/값 감싸는 용도로 있으면 큰따옴표로 변경 (필요시)
         text = re.sub(r"(?<!\\)'", '"', text)
 
         # JSON 시작 위치부터 추출
@@ -137,13 +131,14 @@ def clean_json(message):
 #clean_json_runnable = RunnableLambda(clean_json)
 clean_json_runnable = RunnableLambda(lambda x: (print("Before clean_json:", x), clean_json(x))[1])
 
+
+# 파서 설정
 problem_pydantic_parser = PydanticOutputParser(pydantic_object=JLPTProblem)
 general_pydantic_parser = PydanticOutputParser(pydantic_object=GenerationProblem)
-
 str_parser = StrOutputParser()
 
-# 5) RAG 파이프라인
-#retrieval_chain = retriever | format_docs_runnable
+
+# RAG 파이프라인
 retrieval_chain = RunnableLambda(lambda inputs: retriever.invoke(inputs["question"])) | format_docs_runnable
 prag_chain = (
     {
@@ -170,14 +165,15 @@ grag_chain = (
     | general_pydantic_parser
 )
 
-# 6) 문제 생성 요청 여부 판단
+# 문제 생성 요청 여부 판단
 def is_generation_request(question: str) -> bool:
     return any(keyword in question for keyword in ["문제", "출제", "만들어", "생성", "개 만들어"])
 
 # 서버가 살아있는 동안 유지되는 메모리 기반 chat_history 저장소
 chat_histories = {}
 
-# 7) FastAPI 라우터
+
+# FastAPI 라우터
 @router.post("/ask")
 def ask_question(request: QuestionRequest, user_id: str): # user_id는 추후에 바꿀 예정
     
