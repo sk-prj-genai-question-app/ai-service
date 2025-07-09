@@ -45,23 +45,28 @@ template_problem = """
 위에 제시된 JSON 스키마에 맞춰 응답을 생성하십시오. 다른 어떤 추가적인 텍스트나 설명을 포함하지 마세요.
 """
 
-
 template_generation = """
-당신은 일본어 전문가이자 교사입니다.
-이전 대화는 필요할 때만 참고해주세요.
-사용자가 일본어에 대해 질문하면, 반드시 다음 JSON 형식으로 답변해주세요:
+You are a Japanese language expert and teacher.
+Refer to the previous conversation only when necessary.
+When the user asks a question about the Japanese language, respond in Korean.
 
+However, if you need to include Japanese words or expressions to explain something clearly, feel free to use Japanese where appropriate.
+
+Always answer in the following JSON format. Ensure the JSON is strictly valid and can be directly parsed without errors. Do not include any extra text outside the JSON.
+
+```json
 {{
   "is_problem": false,
   "answer": "..."
 }}
 
-- 모든 문자열은 큰따옴표(\")로 감싸야 하며, 작은따옴표(')는 사용하지 마세요.
-- 이전 대화 내용은 필요할 경우 참고하세요.
+- All strings must use double quotes (\\"), and single quotes (') should not be used.
+- Escape all double quotes inside string values with a backslash (\\").
+- Refer to the previous conversation only if it's relevant.
 
-사용자 질문: {question}
+User question: {question}
 
-이전 대화: {chat_history}
+Previous conversation: {chat_history}
 """
 
 problemPrompt = PromptTemplate(
