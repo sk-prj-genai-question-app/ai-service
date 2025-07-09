@@ -114,9 +114,6 @@ def clean_json(message):
         text = message if isinstance(message, str) else str(message)
         text = text.strip()
         text = re.sub(r"^```json\s*|```$", "", text, flags=re.DOTALL).strip()
-
-        # unicode_escape로 이스케이프된 문자들 (\\n, \\' 등) 한 번 해제
-        text = codecs.decode(text, 'unicode_escape')
         text = re.sub(r"(?<!\\)'", '"', text)
 
         # JSON 시작 위치부터 추출
@@ -128,8 +125,7 @@ def clean_json(message):
     except Exception as e:
         print("clean_json error:", e)
         return str(message)
-#clean_json_runnable = RunnableLambda(clean_json)
-clean_json_runnable = RunnableLambda(lambda x: (print("Before clean_json:", x), clean_json(x))[1])
+clean_json_runnable = RunnableLambda(clean_json)
 
 
 # 파서 설정
