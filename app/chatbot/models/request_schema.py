@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class QuestionRequest(BaseModel):
     question: str
@@ -18,4 +18,4 @@ class JLPTProblem(BaseModel):
 
 class GenerationProblem(BaseModel):
     is_problem: bool
-    answer: str
+    answer: str  = Field(description="질문에 대한 답변")
