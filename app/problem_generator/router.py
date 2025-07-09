@@ -21,7 +21,7 @@ BACKEND_API_URL = os.getenv("BACKEND_API_URL", "http://localhost:8080/api/proble
 # --- 요청 및 응답 모델 정의 ---
 
 class ProblemRequest(BaseModel):
-    level: str = Field(..., description="JLPT 레벨 (예: N1, N2)", example="N1")
+    level: str = Field(..., description="JLPT 레벨 (예: N1, N2, N3)", example="N1")
     problem_type: str = Field(..., description="문제 유형 (V: 어휘, G: 문법, R: 독해)", example="G")
 
 class Choice(BaseModel):
@@ -61,7 +61,9 @@ def generate_problem(request: ProblemRequest):
     # --- 주제 및 품사 목록 정의 ---
     GENERAL_TOPICS = [
         "人間関係", "仕事", "感情", "自然", "社会", "技術", "健康", "芸術", 
-        "経済", "教育", "科学", "歴史", "文化", "環境", "政治"
+        "経済", "教育", "科学", "歴史", "文化", "環境", "政治", "Eメール", 
+        "SNS", "旅行", "食べ物", "スポーツ", "ファッション", "音楽", "映画",
+        "文学", "趣味", "ライフスタイル", "国際関係", "法律",
     ]
     PARTS_OF_SPEECH = [
         "名詞", "動詞", "形容詞", "擬音語・擬態語"
