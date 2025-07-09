@@ -1,5 +1,6 @@
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from .problem_generator.router import router as problem_generator_router
 from .chatbot.router import router as chatbot_router
 
@@ -8,6 +9,14 @@ app = FastAPI(
     title="JLPT AI 서비스",
     description="LangChain과 RAG를 사용하여 JLPT 문제를 생성하고, AI 챗봇 기능을 제공하는 API입니다.",
     version="1.1.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],  # 프론트엔드 Origin 허용
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # 문제 생성기 라우터 포함
