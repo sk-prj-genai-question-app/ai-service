@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from models.request_schema import QuestionRequest, JLPTProblem, GenerationProblem
-from vector_store import get_vectorstore
+from app.chatbot.models.request_schema import QuestionRequest, JLPTProblem, GenerationProblem
+from app.chatbot.vector_store import get_vectorstore
 from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.schema import Document
@@ -185,8 +185,14 @@ def ask_question(request: QuestionRequest, user_id: str): # user_id는 추후에
     if is_generation_request(request.question):
         try:
             result = prag_chain.invoke(inputs)
-            print("LLM raw output:", result)
+            print("===== LLM 원본 출력 =====")
+            print(result)   # 여기서 실제 LLM 응답 내용 확인
+            print("=======================")
         except Exception as e:
+            import traceback
+            print("prag_chain.invoke 예외:", e)
+            traceback.print_exc()  # 예외 전체 스택 트레이스 출력
+
             return {
                 "answer": str(e),
                 "warning": "문제 생성 또는 JSON 파싱에 실패했습니다. 원시 문자열로 반환합니다."

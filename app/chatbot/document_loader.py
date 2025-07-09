@@ -19,7 +19,7 @@ def split_jlpt_problems(md_text: str, 유형: str):
     return docs
 
 # jlpt data 메타데이터 설정
-def load_documents(base_path="../../data/jlpt_data"):
+def load_documents(base_path=os.path.abspath("data/jlpt_data")):
     docs = []
     for root, _, files in os.walk(base_path):
         for file in files:

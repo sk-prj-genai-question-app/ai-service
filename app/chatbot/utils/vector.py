@@ -1,4 +1,4 @@
-from vector_store import get_vectorstore
+from app.chatbot.vector_store import get_vectorstore
 
 def get_retriever():
     vectorstore = get_vectorstore()

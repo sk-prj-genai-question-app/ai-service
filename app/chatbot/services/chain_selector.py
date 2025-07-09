@@ -1,4 +1,4 @@
-from routes.llm_chains import prag_chain, grag_chain
+from app.chatbot.routes.llm_chains import prag_chain, grag_chain
 
 def is_generation_request(question: str) -> bool:
     return any(keyword in question for keyword in ["문제", "출제", "만들어", "생성", "개 만들어"])

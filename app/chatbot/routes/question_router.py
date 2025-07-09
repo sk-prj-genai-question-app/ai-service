@@ -1,11 +1,11 @@
 from fastapi import APIRouter
-from models.request_schema import QuestionRequest
-from services.chain_selector import select_chain
-from services.chat_history import trim_chat_history, chat_histories
+from app.chatbot.models.request_schema import QuestionRequest
+from app.chatbot.services.chain_selector import select_chain
+from app.chatbot.services.chat_history import trim_chat_history, chat_histories
 
 router = APIRouter()
 
-@router.post("/ask")
+@router.post("/chatbot")
 def ask_question(request: QuestionRequest, user_id: str):
     chat_history = chat_histories.get(user_id, "")
     trimmed_history = trim_chat_history(chat_history)

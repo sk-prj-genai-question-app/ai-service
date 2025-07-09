@@ -3,9 +3,9 @@ from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
 from langchain_openai import ChatOpenAI
 from langchain.output_parsers import PydanticOutputParser
 from langchain_core.output_parsers import StrOutputParser
-from models.request_schema import JLPTProblem, GenerationProblem
-from utils.vector import get_retriever, format_docs_limited
-from utils.cleaning import clean_json
+from app.chatbot.models.request_schema import JLPTProblem, GenerationProblem
+from app.chatbot.utils.vector import get_retriever, format_docs_limited
+from app.chatbot.utils.cleaning import clean_json
 
 # 프롬프트 템플릿
 template_problem = """
