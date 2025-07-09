@@ -1,12 +1,16 @@
 from fastapi import APIRouter
-from models.request_schema import QuestionRequest
+from models.request_schema import QuestionRequest, JLPTProblem, GenerationProblem
 from vector_store import get_vectorstore
 from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.schema import Document
 from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.output_parsers import JsonOutputParser
+from pydantic import BaseModel
+from langchain.output_parsers import PydanticOutputParser
 import json
+import re
 
 router = APIRouter()
 
@@ -14,10 +18,26 @@ router = APIRouter()
 vectorstore = get_vectorstore()
 retriever = vectorstore.as_retriever()
 
-# 2) 문서 리스트를 텍스트로 변환
-def format_docs(docs: list[Document]) -> str:
-    return "\n\n".join(doc.page_content for doc in docs)
-format_docs_runnable = RunnableLambda(format_docs)
+# chat history token 수 제한
+MAX_TURNS = 700
+
+def trim_chat_history(history: str, max_turns=MAX_TURNS) -> str:
+    turns = history.strip().split("\n")
+    trimmed = turns[-(max_turns * 2):]
+    return "\n".join(trimmed)
+
+
+# context 제한
+def format_docs_limited(docs: list[Document], max_length: int = 1500) -> str:
+    combined = ""
+    for doc in docs:
+        if len(combined) + len(doc.page_content) > max_length:
+            break
+        combined += doc.page_content + "\n\n"
+    return combined.strip()
+format_docs_runnable = RunnableLambda(lambda docs: format_docs_limited(docs, max_length=1500))
+
+
 
 # 3) 프롬프트 템플릿
 template_problem = """
@@ -28,35 +48,35 @@ template_problem = """
 1. 사용자가 '문제 만들어줘', '문제 생성해줘', 'N3 문법 문제 3개 만들어줘' 등과 같이 문제 생성을 요청하는 경우, 아래 형식에 따라 JSON 형식으로 문제를 생성하세요.
 2. 그 외 일반적인 질문에는 일반적인 지식 기반 답변을 하세요.
 
----
-
-**IMPORTANT INSTRUCTIONS FOR PROBLEM STRUCTURE:**
-{{
-  "type": "problem",
-  "problems": [
-    {
-      "problem_title_parent": 문제 세트의 공통 지시문,
-      "problem_title_child": 개별 문제의 문장,
-      "problem_content": 독해 문제용 지문, 문법/어휘 문제의 경우 null로 설정,
-      "choices": 보기 4개,
-      "answer_number": 정답 번호 (1~4),
-      "explanation": 반드시 한국어로 작성
-    }
-  ]
-}}
-
----
-
 **CRITICAL LANGUAGE RULES**
 - JSON의 모든 문제 관련 텍스트는 일본어로 작성
 - explanation은 한국어로 작성
+
+{{
+  "is_problem": true,
+  "problem_title_parent": "string",
+  "problem_title_child": "string",
+  "problem_content": "string (can be null if not applicable)",
+  "choices": [
+    {{"number": 1, "content": "string"}},
+    {{"number": 2, "content": "string"}},
+    {{"number": 3, "content": "string"}},
+    {{"number": 4, "content": "string"}}
+  ],
+  "answer_number": "integer (from 1 to 4)",
+  "explanation": "string (detailed explanation of why the answer is correct and others are not)"
+}}
+
 
 사용자 질문: {question}
 ---
 {context}
 
 {chat_history}
+
+위에 제시된 JSON 스키마에 맞춰 응답을 생성하십시오. 다른 어떤 추가적인 텍스트나 설명을 포함하지 마세요.
 """
+
 
 template_generation = """
 당신은 일본어 관련 응답을 해주는 전문가이자 교사입니다.
@@ -66,8 +86,10 @@ template_generation = """
 
 이전에 했던 질의 : {chat_history}
 
+JSON 응답의 모든 문자열은 큰따옴표(")로 감싸야 합니다. 작은따옴표(')를 쓰지 마세요.
+반드시 아래와 같은 JSON 객체 형태로 응답하세요:
 {{
-    "type": "",
+    "is_problem": false,
     "answer": "..."
 }}
 
@@ -87,23 +109,42 @@ generationPrompt = PromptTemplate(
 
 # 4) LLM 및 파싱 함수
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
-json_parser = StrOutputParser()
+json_parser = JsonOutputParser()
 
-# def clean_json(text: str) -> str:
-#     if text.strip().startswith("```json"):
-#         return text.strip().removeprefix("```json").removesuffix("```").strip()
-#     return text.strip()
+#######################################################
 
-def clean_json(message) -> str:
-    text = message.content if hasattr(message, "content") else message
-    if text.strip().startswith("```json"):
-        return text.strip().removeprefix("```json").removesuffix("```").strip()
-    return text.strip()
-clean_json_runnable = RunnableLambda(clean_json)
+def clean_json(message):
+    try:
+        text = message if isinstance(message, str) else str(message)
+        text = text.strip()
+        text = re.sub(r"^```json\s*|```$", "", text, flags=re.DOTALL).strip()
 
+        # unicode_escape로 이스케이프된 문자들 (\\n, \\' 등) 한 번 해제
+        text = codecs.decode(text, 'unicode_escape')
+
+        # 작은따옴표가 키/값 감싸는 용도로 있으면 큰따옴표로 변경 (필요시)
+        text = re.sub(r"(?<!\\)'", '"', text)
+
+        # JSON 시작 위치부터 추출
+        json_start = text.find("{")
+        if json_start > 0:
+            text = text[json_start:]
+
+        return text
+    except Exception as e:
+        print("clean_json error:", e)
+        return str(message)
+#clean_json_runnable = RunnableLambda(clean_json)
+clean_json_runnable = RunnableLambda(lambda x: (print("Before clean_json:", x), clean_json(x))[1])
+
+problem_pydantic_parser = PydanticOutputParser(pydantic_object=JLPTProblem)
+general_pydantic_parser = PydanticOutputParser(pydantic_object=GenerationProblem)
+
+str_parser = StrOutputParser()
 
 # 5) RAG 파이프라인
-retrieval_chain = retriever | format_docs_runnable
+#retrieval_chain = retriever | format_docs_runnable
+retrieval_chain = RunnableLambda(lambda inputs: retriever.invoke(inputs["question"])) | format_docs_runnable
 prag_chain = (
     {
         "context": retrieval_chain,
@@ -112,8 +153,9 @@ prag_chain = (
     }
     | problemPrompt
     | llm
+    | str_parser
     | clean_json_runnable
-    | json_parser
+    | problem_pydantic_parser
 )
 
 grag_chain = (
@@ -123,7 +165,9 @@ grag_chain = (
     }
     | generationPrompt
     | llm
+    | str_parser
     | clean_json_runnable
+    | general_pydantic_parser
 )
 
 # 6) 문제 생성 요청 여부 판단
@@ -139,16 +183,17 @@ def ask_question(request: QuestionRequest, user_id: str): # user_id는 추후에
     
     # user_id는 클라이언트가 매 요청에 함께 보내야 함
     chat_history = chat_histories.get(user_id, "")
+    trimmed_history = trim_chat_history(chat_history)
 
-    #chat_history = ""  # 필요시 확장
     inputs = {
         "question": request.question,
-        "chat_history": chat_history
+        "chat_history": trimmed_history
     }
 
     if is_generation_request(request.question):
         try:
             result = prag_chain.invoke(inputs)
+            print("LLM raw output:", result)
         except Exception as e:
             return {
                 "answer": str(e),
@@ -159,4 +204,4 @@ def ask_question(request: QuestionRequest, user_id: str): # user_id는 추후에
         
     # 대화 누적 (간단한 형식, 필요하면 포맷 조절 가능)
     chat_histories[user_id] = chat_history + f"\n사용자: {request.question}\n어시스턴트: {result}"
-    return {"chat": result}
+    return result

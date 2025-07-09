@@ -1,19 +1,21 @@
 import os
 from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+#from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 
 load_dotenv()
 vectorstore_path = "faiss_index"
 
-if "GOOGLE_API_KEY" not in os.environ:
-    raise ValueError("GOOGLE_API_KEY가 .env 파일에 없습니다. 추가해주세요.")
+if "OPENAI_API_KEY" not in os.environ:
+    raise ValueError("OPENAI_API_KEY가 .env 파일에 없습니다. 추가해주세요.")
 
 def get_vectorstore():
-    embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001",
-        task_type="retrieval_document"
-    )
+    # embeddings = GoogleGenerativeAIEmbeddings(
+    #     model="models/embedding-001",
+    #     task_type="retrieval_document"
+    # )
+    embeddings = OpenAIEmbeddings()
 
     if os.path.exists(vectorstore_path):
         return FAISS.load_local(
@@ -25,7 +27,7 @@ def get_vectorstore():
         from document_loader import load_documents
         docs = load_documents()
 
-        # 🔍 Document 체크
+        # Document 체크
         for i, doc in enumerate(docs):
             if not isinstance(doc.page_content, str):
                 raise TypeError(f"문서 {i}의 page_content가 문자열이 아닙니다.")
