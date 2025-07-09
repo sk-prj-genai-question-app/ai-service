@@ -1,57 +1,76 @@
 import os
 from dotenv import load_dotenv
 
-from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+# from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
+
+from langchain.prompts import (
+    ChatPromptTemplate,
+    MessagesPlaceholder,
+    SystemMessagePromptTemplate, 
+    HumanMessagePromptTemplate,  
+)
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage 
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.schema.output_parser import StrOutputParser
-from langchain.schema.messages import HumanMessage, AIMessage, SystemMessage # 메시지 타입 임포트
 
 # .env 파일에서 환경 변수 로드
 load_dotenv()
 
-# GOOGLE_API_KEY가 있는지 확인
-if "OPENAI_API_KEY" not in os.environ:
-    raise ValueError("OPENAI_API_KEY .env 파일에 없습니다. 추가해주세요.")
+# if "OPENAI_API_KEY" not in os.environ:
+#     raise ValueError("OPENAI_API_KEY .env 파일에 없습니다. 추가해주세요.")
 
 # 1. LLM 정의 (문제 생성에 사용된 모델과 동일하게 gemini-1.5-pro-latest 사용)
-llm = ChatOpenAI(model="gpt-3.5-turbo-", temperature=0.7)
+# llm = ChatOpenAI(model="gpt-3.5-turbo-", temperature=0.7)
+llm = ChatGroq(
+    model="llama-3.1-8b-instant",  # 또는 "llama3-70b-8192", "gemma-7b-it"
+    temperature=0.7,
+)
 
 # 2. 채팅 프롬프트 템플릿 정의
 # MessagesPlaceholder를 사용하여 이전 대화 기록을 동적으로 삽입합니다.
 chat_template = ChatPromptTemplate.from_messages(
     [
-        SystemMessage(content="""
-        You are a helpful Japanese language tutor specializing in JLPT reading comprehension.
-        Your goal is to provide clear and concise answers to user questions.
-        You should act as a supportive tutor for JLPT studies, assisting with general questions related to Japanese language learning, JLPT exams, or providing explanations for various Japanese concepts.
-        Always respond in Korean.
+        SystemMessagePromptTemplate.from_template(
+            """
+            You are a helpful Japanese language tutor specializing in JLPT reading comprehension.
+            Your goal is to provide clear and concise answers to user questions.
+            You should act as a supportive tutor for JLPT studies, assisting with general questions related to Japanese language learning, JLPT exams, or providing explanations for various Japanese concepts.
+            Always respond in Korean.
 
-        --- Provided JLPT Problem Information ---
-        Problem ID: {problem_id}
-        Level: {problem_level}
-        Type: {problem_type}
-        Parent Title: {problem_title_parent}
-        Child Title: {problem_title_child}
-        Problem Content:
-        {problem_content}
+            --- Provided JLPT Problem Information ---
+            Problem ID: {problem_id}
+            Level: {problem_level}
+            Type: {problem_type}
+            Parent Title: {problem_title_parent}
+            Child Title: {problem_title_child}
+            Problem Content:
+            {problem_content}
 
-        Choices:
-        {problem_choices_formatted}
-        Correct Answer Number: {problem_answer_number}
-        Explanation:
-        {problem_explanation}
-        ----------------------------------
+            Choices:
+            {problem_choices_formatted}
+            Correct Answer Number: {problem_answer_number}
+            Explanation:
+            {problem_explanation}
+            ----------------------------------
 
-        # Instructions for Answering:
-        Based on the "Problem Content" and "Provided JLPT Problem Information" above, answer the user's "question".
-        Carefully analyze the "Problem Content" to identify the author's main argument or theme, and any supporting examples or historical contexts mentioned.
-        Do not make up information that is not present in the "Problem Content" or "Explanation".
-        If the "Problem Content" does not contain enough information to answer, state that clearly.
-        Focus on extracting the information directly from the given text.
-        """),
+            # Instructions for Answering:
+            Based on the "Problem Content" and "Provided JLPT Problem Information" above, answer the user's "question".
+            Carefully analyze the "Problem Content" to identify the author's main argument or theme, and any supporting examples or historical contexts mentioned.
+            Do not make up information that is not present in the "Problem Content" or "Explanation".
+            If the "Problem Content" does not contain enough information to answer, state that clearly.
+            Focus on extracting the information directly from the given text.
+
+            User Question: {question}
+            """,
+            input_variables=[ # <--- input_variables를 명시적으로 추가했습니다.
+                "problem_id", "problem_level", "problem_type",
+                "problem_title_parent", "problem_title_child", "problem_content",
+                "problem_choices_formatted", "problem_answer_number", "problem_explanation",
+                "question"
+            ]
+        ),
         MessagesPlaceholder(variable_name="chat_history"),
-        HumanMessage(content="{question}"),
     ]
 )
 
@@ -60,13 +79,19 @@ def create_chatbot_chain():
     # RunnablePassthrough를 사용하여 입력 변수를 체인으로 전달
     return (
         RunnablePassthrough.assign(
+            problem_id=lambda x: x.get('problem_id'),
+            problem_level=lambda x: x.get('problem_level'),
+            problem_type=lambda x: x.get('problem_type'),
+            problem_title_parent=lambda x: x.get('problem_title_parent'),
+            problem_title_child=lambda x: x.get('problem_title_child'),
+            problem_content=lambda x: x.get('problem_content') or "",
             problem_choices_formatted=lambda x: "\n".join([
-                f" {choice['number']}. {choice['content']} (Correct: {choice['is_correct']})"
-                # x.get('problem_choices')를 사용하여 problem_choices가 없을 때를 대비
+                f" {choice['number']}. {choice['content']}" # <--- 여기서 ['number'] 와 ['content'] 로 변경
                 for choice in x.get('problem_choices', [])
-            ])
-            ,problem_content=lambda x: x.get('problem_content') or ""
-            ,problem_explanation=lambda x: x.get('problem_explanation') or ""
+            ]),
+            problem_answer_number=lambda x: x.get('problem_answer_number'),
+            problem_explanation=lambda x: x.get('problem_explanation') or "",
+            question=lambda x: x.get('question'),
         )
         | chat_template
         | llm
