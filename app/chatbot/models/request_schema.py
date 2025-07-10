@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 
 class QuestionRequest(BaseModel):
     question: str
+    user_id: str = Field(alias="userId")
 
 class Choice(BaseModel):
     number: int
@@ -9,6 +10,8 @@ class Choice(BaseModel):
 
 class JLPTProblem(BaseModel):
     is_problem: bool
+    level: str
+    problem_type: str
     problem_title_parent: str
     problem_title_child: str
     problem_content: str

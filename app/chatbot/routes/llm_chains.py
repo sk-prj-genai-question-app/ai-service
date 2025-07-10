@@ -19,9 +19,13 @@ template_problem = """
 **CRITICAL LANGUAGE RULES**
 - JSON의 모든 문제 관련 텍스트는 일본어로 작성
 - explanation은 한국어로 작성
+- level은 "N1", "N2", "N3" 중 하나여야 함
+- problem_type은 "G"(문법), "R"(독해), "V"(어휘) 중 하나여야 함
 
 {{
   "is_problem": true,
+  "level": "N3", // "N1", "N2", "N3" 중 하나
+  "problem_type": "G", // "G"(문법), "R"(독해), "V"(어휘)
   "problem_title_parent": "string",
   "problem_title_child": "string",
   "problem_content": "string (can be null if not applicable)",
@@ -52,7 +56,10 @@ When the user asks a question about the Japanese language, respond in Korean.
 
 However, if you need to include Japanese words or expressions to explain something clearly, feel free to use Japanese where appropriate.
 
-Always answer in the following JSON format. Ensure the JSON is strictly valid and can be directly parsed without errors. Do not include any extra text outside the JSON.
+---
+**CRITICAL: YOU MUST RESPOND ONLY IN THE FOLLOWING JSON FORMAT.**
+**STRICTLY ADHERE TO JSON VALIDITY. NO EXTRA TEXT OUTSIDE THE JSON BLOCK IS PERMITTED.**
+---
 
 ```json
 {{
@@ -60,8 +67,12 @@ Always answer in the following JSON format. Ensure the JSON is strictly valid an
   "answer": "..."
 }}
 
-- All strings must use double quotes (\\"), and single quotes (') should not be used.
-- Escape all double quotes inside string values with a backslash (\\").
+---
+**ABSOLUTELY ESSENTIAL JSON FORMATTING RULES:**
+- All strings MUST use double quotes (\"). Single quotes (') are STRICTLY FORBIDDEN.
+- Every double quote character (") appearing inside any string value MUST be escaped with a backslash (\"). For example, "This is an \"example\" string."
+---
+
 - Refer to the previous conversation only if it's relevant.
 
 User question: {question}
