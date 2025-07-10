@@ -8,25 +8,24 @@ from app.chatbot.utils.vector import get_retriever, format_docs_limited
 from app.chatbot.utils.cleaning import clean_json
 
 # 프롬프트 템플릿
-# 문제 생성 질문 프롬프트 템플릿
 template_problem = """
-You are an expert and teacher specializing in generating JLPT (N1-N3 level) Japanese questions.
+당신은 JLPT(N1~N3 수준) 일본어 문제를 생성하는 전문가이자 교사입니다.
 
-Process user requests as follows:
+사용자의 요청을 다음과 같이 처리하십시오:
 
-1. When the user asks for problem generation (e.g., '문제 만들어줘', '문제 생성해줘', 'N3 문법 문제 3개 만들어줘'), generate problems in JSON format according to the structure below.
-2. For other general questions, provide general knowledge-based answers.
+1. 사용자가 '문제 만들어줘', '문제 생성해줘', 'N3 문법 문제 3개 만들어줘' 등과 같이 문제 생성을 요청하는 경우, 아래 형식에 따라 JSON 형식으로 문제를 생성하세요.
+2. 그 외 일반적인 질문에는 일반적인 지식 기반 답변을 하세요.
 
 **CRITICAL LANGUAGE RULES**
-- All problem-related text within the JSON must be in Japanese.
-- The 'explanation' must be in Korean.
-- 'level' must be one of "N1", "N2", or "N3".
-- 'problem_type' must be one of "G" (Grammar), "R" (Reading), or "V" (Vocabulary).
+- JSON의 모든 문제 관련 텍스트는 일본어로 작성
+- explanation은 한국어로 작성
+- level은 "N1", "N2", "N3" 중 하나여야 함
+- problem_type은 "G"(문법), "R"(독해), "V"(어휘) 중 하나여야 함
 
 {{
   "is_problem": true,
-  "level": "N3", // One of "N1", "N2", "N3"
-  "problem_type": "G", // One of "G", "R", "V"
+  "level": "N3", // "N1", "N2", "N3" 중 하나
+  "problem_type": "G", // "G"(문법), "R"(독해), "V"(어휘)
   "problem_title_parent": "string",
   "problem_title_child": "string",
   "problem_content": "string (can be null if not applicable)",
@@ -40,16 +39,16 @@ Process user requests as follows:
   "explanation": "string (detailed explanation of why the answer is correct and others are not)"
 }}
 
-User question: {question}
+
+사용자 질문: {question}
 ---
 {context}
 
 {chat_history}
 
-Generate the response strictly following the JSON schema provided above. Do not include any additional text or explanations.
+위에 제시된 JSON 스키마에 맞춰 응답을 생성하십시오. 다른 어떤 추가적인 텍스트나 설명을 포함하지 마세요.
 """
 
-# 일반 질문 프롬프트 템플릿
 template_generation = """
 You are a Japanese language expert and teacher.
 Refer to the previous conversation only when necessary.
@@ -57,7 +56,10 @@ When the user asks a question about the Japanese language, respond in Korean.
 
 However, if you need to include Japanese words or expressions to explain something clearly, feel free to use Japanese where appropriate.
 
-Always answer in the following JSON format. Ensure the JSON is strictly valid and can be directly parsed without errors. Do not include any extra text outside the JSON.
+---
+**CRITICAL: YOU MUST RESPOND ONLY IN THE FOLLOWING JSON FORMAT.**
+**STRICTLY ADHERE TO JSON VALIDITY. NO EXTRA TEXT OUTSIDE THE JSON BLOCK IS PERMITTED.**
+---
 
 ```json
 {{
@@ -65,8 +67,12 @@ Always answer in the following JSON format. Ensure the JSON is strictly valid an
   "answer": "..."
 }}
 
-- All strings must use double quotes (\\"), and single quotes (') should not be used.
-- Escape all double quotes inside string values with a backslash (\\").
+---
+**ABSOLUTELY ESSENTIAL JSON FORMATTING RULES:**
+- All strings MUST use double quotes (\"). Single quotes (') are STRICTLY FORBIDDEN.
+- Every double quote character (") appearing inside any string value MUST be escaped with a backslash (\"). For example, "This is an \"example\" string."
+---
+
 - Refer to the previous conversation only if it's relevant.
 
 User question: {question}
