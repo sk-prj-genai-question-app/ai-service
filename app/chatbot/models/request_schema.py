@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 
 class QuestionRequest(BaseModel):
     question: str
+    user_id: str = Field(alias="userId")
 
 class Choice(BaseModel):
     number: int

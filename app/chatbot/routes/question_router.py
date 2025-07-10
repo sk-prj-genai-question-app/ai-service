@@ -6,7 +6,8 @@ from app.chatbot.services.chat_history import trim_chat_history, chat_histories
 router = APIRouter()
 
 @router.post("/chatbot")
-def ask_question(request: QuestionRequest, user_id: str):
+def ask_question(request: QuestionRequest):
+    user_id = request.user_id;
     chat_history = chat_histories.get(user_id, "")
     trimmed_history = trim_chat_history(chat_history)
 
