@@ -2,10 +2,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .problem_generator.router import router as problem_generator_router
-from .chatbot.router import router as chatbot_router
 from .user_question_chatbot.router import router as user_question_chatbot_router
-from app.chatbot.routes.question_router import router as chatbot_router
-#from app.chatbot.routes.chatbot import router as chatbot_router
+from app.chatbot.routes.chatbot import router as chatbot_router
 
 # FastAPI 애플리케이션 인스턴스 생성
 app = FastAPI(
