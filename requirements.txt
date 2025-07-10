@@ -10,3 +10,4 @@ pydantic
 faiss-cpu
 unstructured
 markdown
+langchain_groq

@@ -123,6 +123,11 @@ Follow this JSON structure precisely:
 - The **'explanation'** field **MUST** be written in **Korean**. This is a non-negotiable, strict requirement.
 - All other fields in the JSON output (problem_title_parent, problem_title_child, problem_content, and the 'content' within choices) **MUST** be in **Japanese**.
 
+**IMPORTANT INSTRUCTIONS FOR DIVERSITY AND ORIGINALITY:**
+- You **MUST** generate a completely new and original problem.
+- **DO NOT** repeat problems or choices that you may have generated in previous requests.
+- For Vocabulary (語彙) and Grammar (文法) problems, ensure the choices are **varied** and not limited to a small set of common words or patterns. Create challenging and plausible distractors.
+
 **IMPORTANT INSTRUCTIONS FOR PROBLEM GENERATION:**
 - The user's request in the 'QUESTION' section will specify a particular **topic**, **question type**, and **content length**. You **MUST** strictly follow all these specifications.
 - For Reading Comprehension (読解), select a suitable passage from the CONTEXT that matches the requested **topic**.
@@ -146,7 +151,7 @@ OUTPUT (in valid JSON format):
 prompt = PromptTemplate(template=template, input_variables=["context", "question"])
 
 # 7. LLM 정의
-llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro-latest", temperature=0.7)
+llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro-latest", temperature=0.85)
 
 # --- 출력 파서 및 체인 조립 ---
 

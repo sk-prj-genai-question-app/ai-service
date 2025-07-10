@@ -1,7 +1,9 @@
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from .problem_generator.router import router as problem_generator_router
-from .chatbot.router import router as chatbot_router
+from .user_question_chatbot.router import router as user_question_chatbot_router
+from app.chatbot.routes.question_router import router as chatbot_router
 
 # FastAPI 애플리케이션 인스턴스 생성
 app = FastAPI(
@@ -10,11 +12,22 @@ app = FastAPI(
     version="1.1.0",
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],  # 프론트엔드 Origin 허용
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # 문제 생성기 라우터 포함
 app.include_router(problem_generator_router)
 
 # 챗봇 라우터 포함
 app.include_router(chatbot_router)
+
+# user_question 챗봇 라우터 포함
+app.include_router(user_question_chatbot_router)
 
 # 서버 상태 확인을 위한 루트 엔드포인트
 @app.get("/", summary="서버 상태 확인")
