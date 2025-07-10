@@ -9,16 +9,36 @@ Dockerfile
 # Python 가상 환경
 .venv
 venv/
+env/
+ENV/
 
-# Python 캐시
+# Python 캐시 및 컴파일된 파일
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *.pyd
 
 # IDE 및 에디터 설정
 .idea/
 .vscode/
+.spyderproject
+.ropeproject
 
 # 환경 변수 파일 (보안)
 .env
+**/.env
+
+# 테스트 및 커버리지 리포트
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 주피터 노트북 체크포인트
+.ipynb_checkpoints
+
+# 원본 데이터 (벡터 DB에 저장되었으므로 제외)
+data/
+
+# 로그 파일
+*.log
+logs.txt
