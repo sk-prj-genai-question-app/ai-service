@@ -1,8 +1,8 @@
 import os
 from dotenv import load_dotenv
 
-# from langchain_openai import ChatOpenAI
-from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
+# from langchain_groq import ChatGroq
 
 from langchain.prompts import (
     ChatPromptTemplate,
@@ -17,15 +17,15 @@ from langchain.schema.output_parser import StrOutputParser
 # .env 파일에서 환경 변수 로드
 load_dotenv()
 
-# if "OPENAI_API_KEY" not in os.environ:
-#     raise ValueError("OPENAI_API_KEY .env 파일에 없습니다. 추가해주세요.")
+if "OPENAI_API_KEY" not in os.environ:
+    raise ValueError("OPENAI_API_KEY .env 파일에 없습니다. 추가해주세요.")
 
 # 1. LLM 정의 (문제 생성에 사용된 모델과 동일하게 gemini-1.5-pro-latest 사용)
-# llm = ChatOpenAI(model="gpt-3.5-turbo-", temperature=0.7)
-llm = ChatGroq(
-    model="llama-3.1-8b-instant",  # 또는 "llama3-70b-8192", "gemma-7b-it"
-    temperature=0.7,
-)
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+# llm = ChatGroq(
+#     model="llama-3.1-8b-instant",  # 또는 "llama3-70b-8192", "gemma-7b-it"
+#     temperature=0.7,
+# )
 
 # 2. 채팅 프롬프트 템플릿 정의
 # MessagesPlaceholder를 사용하여 이전 대화 기록을 동적으로 삽입합니다.
