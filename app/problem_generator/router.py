@@ -16,7 +16,7 @@ router = APIRouter(
 )
 
 # 백엔드 API URL을 환경 변수에서 가져오거나 기본값 설정
-BACKEND_API_URL = os.getenv("BACKEND_API_URL", "http://localhost:8080/api/problems")
+BACKEND_API_URL = os.getenv("BACKEND_API_URL", "http://backend:8080/problems")
 
 # --- 요청 및 응답 모델 정의 ---
 
