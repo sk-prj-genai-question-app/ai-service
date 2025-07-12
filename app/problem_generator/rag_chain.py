@@ -162,8 +162,16 @@ def clean_json_output(text: str) -> str:
 def format_docs(docs):
     return "\n\n---\n\n".join(doc.page_content for doc in docs)
 
+def format_docs_limited(docs, max_length: int = 3000) -> str:
+    combined = ""
+    for doc in docs:
+        if len(combined) + len(doc.page_content) > max_length:
+            break
+        combined += doc.page_content + "\n\n"
+    return combined.strip()
+
 rag_chain = (
-    { "context": retriever | format_docs, "question": RunnablePassthrough() }
+    { "context": retriever | format_docs_limited, "question": RunnablePassthrough() }
     | prompt
     | llm
     | StrOutputParser()
