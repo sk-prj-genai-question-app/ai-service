@@ -3,6 +3,9 @@ import json
 import re
 from dotenv import load_dotenv
 
+from langchain.globals import set_llm_cache
+from langchain.cache import InMemoryCache
+
 from langchain_community.document_loaders import DirectoryLoader, UnstructuredMarkdownLoader
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
@@ -13,6 +16,10 @@ from langchain.schema.output_parser import StrOutputParser
 
 # 1. .env 파일에서 환경 변수 로드
 load_dotenv()
+
+# LangChain 캐싱 설정
+set_llm_cache(InMemoryCache())
+print("LangChain InMemoryCache가 활성화되었습니다.")
 
 # GOOGLE_API_KEY가 있는지 확인
 if "GOOGLE_API_KEY" not in os.environ:
@@ -94,51 +101,39 @@ retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
 
 # 6. 프롬프트 템플릿 정의
 template = """
-You are an expert JLPT tutor. Your task is to create a new, original Japanese Language Proficiency Test (JLPT) problem based on the provided context examples.
+You are an expert JLPT tutor. Create a new, original Japanese Language Proficiency Test (JLPT) problem based on the provided context examples.
 The generated problem must be in the same style and level as the context.
-You must output your response in a valid JSON format, containing the problem, four choices, the answer number, and a detailed explanation.
+Output your response in a valid JSON format.
 
-Follow this JSON structure precisely:
-
-**IMPORTANT INSTRUCTIONS FOR PROBLEM STRUCTURE:**
-- **problem_title_parent**: This field should contain the *general instruction* or *overarching title* that applies to a set of problems. For example, "次の文の（ ）に入れるのに最もよいものを、1・2・3・4から一つ選びなさい。" If the problem is a standalone one without a general instruction, you can use a simple problem number (e.g., "問題 1").
-- **problem_title_child**: This field should contain the *specific instruction* or *question statement* for the individual problem. This is the actual question the user needs to answer. For Vocabulary (語彙) and Grammar (文法) problems, the main question text should be placed here.
-- **problem_content**: This field is ONLY for long passages or texts, typically found in Reading Comprehension (読解) problems. For Vocabulary (語彙) and Grammar (文法) problems, this field MUST be null.
-
+JSON Structure:
 {{
-  "problem_title_parent": "string",
-  "problem_title_child": "string",
-  "problem_content": "string (can be null if not applicable)",
+  "problem_title_parent": "string (general instruction, e.g., '次の文の（ ）に入れるのに最もよいものを、1・2・3・4から一つ選びなさい。')",
+  "problem_title_child": "string (specific question statement)",
+  "problem_content": "string (for reading comprehension, null otherwise)",
   "choices": [
     {{"number": 1, "content": "string"}},
     {{"number": 2, "content": "string"}},
     {{"number": 3, "content": "string"}},
     {{"number": 4, "content": "string"}}
   ],
-  "answer_number": "integer (from 1 to 4)",
-  "explanation": "string (detailed explanation of why the answer is correct and others are not)"
+  "answer_number": "integer (1-4)",
+  "explanation": "string (detailed explanation in Korean)"
 }}
 
-**CRITICAL INSTRUCTION: LANGUAGE REQUIREMENTS**
-- The **'explanation'** field **MUST** be written in **Korean**. This is a non-negotiable, strict requirement.
-- All other fields in the JSON output (problem_title_parent, problem_title_child, problem_content, and the 'content' within choices) **MUST** be in **Japanese**.
+Language Requirements:
+- 'explanation' field MUST be in Korean.
+- All other fields (problem_title_parent, problem_title_child, problem_content, choices content) MUST be in Japanese.
 
-**IMPORTANT INSTRUCTIONS FOR DIVERSITY AND ORIGINALITY:**
-- You **MUST** generate a completely new and original problem.
-- **DO NOT** repeat problems or choices that you may have generated in previous requests.
-- For Vocabulary (語彙) and Grammar (文法) problems, ensure the choices are **varied** and not limited to a small set of common words or patterns. Create challenging and plausible distractors.
+Problem Generation Rules:
+- Generate a completely new and original problem. Do NOT repeat previous problems.
+- Strictly follow the 'QUESTION' specifications for topic, question type, and content length.
+- For Reading Comprehension, select a suitable passage from CONTEXT matching the requested topic and content length. Create a question matching the requested question type.
+- Ensure the problem is appropriate for the specified JLPT level.
 
-**IMPORTANT INSTRUCTIONS FOR PROBLEM GENERATION:**
-- The user's request in the 'QUESTION' section will specify a particular **topic**, **question type**, and **content length**. You **MUST** strictly follow all these specifications.
-- For Reading Comprehension (読解), select a suitable passage from the CONTEXT that matches the requested **topic**.
-- The generated `problem_content` **MUST** match the requested **content length** (e.g., short, medium, or long passage).
-- Based on the selected passage, create a question that matches the requested **question type** (e.g., 'find the matching content', 'ask the reason', 'identify the author's claim').
-- Ensure the final problem is appropriate for the specified JLPT level.
-**IMPORTANT INSTRUCTIONS FOR EXPLANATION FIELD:**
-- The content of 'explanation' MUST be in Korean. This is a strict requirement.
-- The format for each choice's explanation MUST be: "{{choice_number}}) {{choice_content}}: {{reason for being correct or incorrect}}".
-- Each explanation for a choice MUST be separated by a newline character (\n).
-- All other strings in the JSON output (problem_title_parent, problem_title_child, problem_content, choices content) MUST be in Japanese.
+Explanation Format:
+- Each choice's explanation MUST be: "{{choice_number}}) {{choice_content}}: {{reason}}".
+- Each explanation for a choice MUST be separated by a newline character (
+).
 
 CONTEXT:
 {context}
@@ -151,7 +146,7 @@ OUTPUT (in valid JSON format):
 prompt = PromptTemplate(template=template, input_variables=["context", "question"])
 
 # 7. LLM 정의
-llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro-latest", temperature=0.85)
+llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest", temperature=0.85)
 
 # --- 출력 파서 및 체인 조립 ---
 
