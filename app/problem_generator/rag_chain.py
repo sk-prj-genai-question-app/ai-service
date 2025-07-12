@@ -162,7 +162,7 @@ def clean_json_output(text: str) -> str:
 def format_docs(docs):
     return "\n\n---\n\n".join(doc.page_content for doc in docs)
 
-def format_docs_limited(docs, max_length: int = 3000) -> str:
+def format_docs_limited(docs, max_length: int = 2000) -> str:
     combined = ""
     for doc in docs:
         if len(combined) + len(doc.page_content) > max_length:
