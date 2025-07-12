@@ -107,7 +107,7 @@ Output your response in a valid JSON format.
 
 JSON Structure:
 {{
-  "problem_title_parent": "string (general instruction, e.g., '次の文の（ ）に入れるのに最もよいものを、1・2・3・4から一つ選びなさい。')",
+  "problem_title_parent": "string (general instruction)",
   "problem_title_child": "string (specific question statement)",
   "problem_content": "string (for reading comprehension, null otherwise)",
   "choices": [
@@ -117,7 +117,7 @@ JSON Structure:
     {{"number": 4, "content": "string"}}
   ],
   "answer_number": "integer (1-4)",
-  "explanation": "string (detailed explanation in Korean)"
+  "explanation": "string (detailed explanation, MUST be in Korean. It's not negotiable that this field is in Korean.)"
 }}
 
 Language Requirements:
