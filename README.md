@@ -1,52 +1,122 @@
-# 🧠 JLPT 문제 생성 학습 도우미 - AI 서비스
+[English](./README.md) | [한국어](./README.ko.md) | [日本語](./README.ja.md)
 
-## 1. 🚀 프로젝트 소개
+---
 
-이 프로젝트는 "생성형 AI를 통한 JLPT 문제 생성 학습 도우미" 웹 애플리케이션의 AI 서비스 부분입니다. JLPT 문제 생성, 사용자 질문에 대한 챗봇 응답 등 핵심 AI 기능을 제공합니다.
+# 🧠 JLPT Question Generation Learning Helper - AI Service
 
-## 2. 🛠️ 기술 스택
+[![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](#-tech-stack)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110-green.svg)](#-tech-stack)
+[![LangChain](https://img.shields.io/badge/LangChain-0.1-purple.svg)](#-tech-stack)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-- **언어**: Python
-- **프레임워크**: FastAPI
-- **AI/ML 라이브러리**: LangChain, OpenAI, Google GenAI, FAISS
-- **기타**: Uvicorn, python-dotenv, pydantic, unstructured, markdown
+This is the core AI service for the "Generative AI-based JLPT Question Generation Learning Helper". Built on FastAPI, it interacts with various Large Language Models (LLMs) using LangChain. It provides more accurate and context-aware JLPT question generation and chatbot responses through a Retrieval-Augmented Generation (RAG) architecture.
 
-## 3. ✨ 주요 기능
+## ✨ Features
 
-- **JLPT 문제 생성**: AI 모델을 활용하여 JLPT 시험 유형에 맞는 문제 생성
-- **챗봇 기능**: 사용자 질문에 대한 AI 기반 답변 제공
-- **FAISS 기반 벡터 검색**: 효율적인 정보 검색 및 활용을 위한 FAISS 인덱스 관리
-- **다양한 AI 모델 연동**: OpenAI, Google GenAI 등 다양한 LLM(Large Language Model) 연동 지원
+- **🤖 Dynamic Question Generation**: Generates JLPT questions (vocabulary, grammar, reading) in real-time using LLMs.
+- **💬 RAG-based Chatbot**: Provides accurate, evidence-based answers to user questions by leveraging a knowledge base stored in a FAISS vector store.
+- **🔄 Multi-LLM Support**: Flexibly switch between and use various language models like OpenAI, Google Gemini, and Groq as needed.
+- **⚡️ High-Performance Async API**: Ensures high throughput and fast response times with FastAPI.
 
-## 4. ⚙️ 환경 설정
+## 🏛️ Architecture: RAG (Retrieval-Augmented Generation)
 
-프로젝트를 로컬에서 실행하기 위해 다음 환경 변수 설정이 필요합니다. 프로젝트 루트에 `.env` 파일을 생성하고 아래 내용을 채워주세요.
+This service adopts the RAG architecture to complement the limitations of LLMs.
+
+1.  **Input**: A user submits a request to generate a question or asks a question.
+2.  **Retrieve**: The system searches a `FAISS` vector store for documents most relevant to the input.
+3.  **Augment**: The retrieved documents (Context) and the original input are combined into a new, augmented prompt.
+4.  **Generate**: This augmented prompt is sent via `LangChain` to an LLM (e.g., GPT-4, Gemini) to generate a contextually accurate answer or question.
+
+This approach reduces hallucinations and produces highly specialized results for a specific domain (JLPT).
+
+## 🛠️ Tech Stack
+
+| Category | Technology / Library | Description |
+| :--- | :--- | :--- |
+| **Language** | Python | 3.12 |
+| **Web Framework** | FastAPI, Uvicorn | Asynchronous API server |
+| **AI Framework** | LangChain | LLM application development |
+| **LLM Integration**| OpenAI, Google GenAI, Groq | |
+| **Vector Search** | FAISS (faiss-cpu) | Embedding vector search for RAG |
+| **Environment** | python-dotenv | |
+| **Data Handling** | Pydantic, unstructured | |
+
+## 📂 Project Structure
 
 ```
-# OpenAI API Key (필요시)
-OPENAI_API_KEY=your_openai_api_key_here
-
-# Google GenAI API Key (필요시)
-GOOGLE_API_KEY=your_google_api_key_here
+app/
+    main.py                   # FastAPI application entry point and router setup
+    chatbot/                  # Logic for the general chatbot
+    problem_generator/        # Logic for JLPT question generation
+    user_question_chatbot/    # Logic for the RAG chatbot that answers user questions
 ```
 
-## 5. ▶️ 실행 방법
+## 🚀 Getting Started
 
-1.  **환경 변수 설정**: 위 4번 항목을 참조하여 `.env` 파일을 설정합니다.
-2.  **의존성 설치**: 다음 명령어를 실행하여 필요한 Python 패키지를 설치합니다.
+### 1. Prerequisites
+
+- Python 3.12 or higher
+- pip
+
+### 2. Installation
+
+In the project root directory, run the following command to install dependencies.
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Environment Variable Setup
+
+Create a `.env` file in the project root and enter the API keys for the LLMs you intend to use.
+
+```
+# .env
+
+# OpenAI API Key
+OPENAI_API_KEY="your_openai_api_key_here"
+
+# Google GenAI API Key
+GOOGLE_API_KEY="your_google_api_key_here"
+
+# Groq API Key
+GROQ_API_KEY="your_groq_api_key_here"
+```
+
+### 4. Running the Development Server
+
+Run the command below to start the Uvicorn development server. The `--reload` flag ensures the server restarts automatically on code changes.
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+## 📖 API Docs & Endpoints
+
+FastAPI automatically generates API documentation compliant with the OpenAPI 3.0 specification. After running the dev server, open your web browser and navigate to **`http://localhost:8000/docs`** to view and test all APIs via the Swagger UI.
+
+- `POST /generate-problem`: Requests the generation of a new JLPT problem.
+- `POST /chat`: Asks a question to the RAG-based chatbot.
+
+## 🐳 Running with Docker
+
+1.  **Build the Docker image**
     ```bash
-    pip install -r requirements.txt
+    docker build -t jlpt-ai-service:latest .
     ```
-3.  **애플리케이션 실행**: 다음 명령어로 FastAPI 애플리케이션을 실행합니다.
+
+2.  **Run the Docker container**
+    Run the container by injecting the API keys from your `.env` file as environment variables.
     ```bash
-    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    docker run -p 8000:8000 \
+      -e OPENAI_API_KEY="your_openai_api_key" \
+      -e GOOGLE_API_KEY="your_google_api_key" \
+      -e GROQ_API_KEY="your_groq_api_key" \
+      jlpt-ai-service:latest
     ```
-4.  **접속**: 애플리케이션은 기본적으로 `http://localhost:8000` 포트에서 실행됩니다. API 문서는 `http://localhost:8000/docs` 에서 확인하실 수 있습니다.
 
-## 6. 📖 API 문서
+## 🤝 Contributing
 
-FastAPI는 자동으로 OpenAPI(Swagger UI) 문서를 생성합니다. 애플리케이션 실행 후 `http://localhost:8000/docs` 에서 상세한 API 명세를 확인하고 테스트할 수 있습니다. 또는, docs 리포지토리에서 확인할 수 있습니다.
+Contributions are always welcome! Please create an issue or submit a Pull Request.
 
-## 7. 📄 라이선스
+## 📄 License
 
-이 프로젝트는 MIT License를 따릅니다. 자세한 내용은 `LICENSE` 파일을 참조하세요.
+This project is licensed under the MIT License. See the `LICENSE` file for details.
