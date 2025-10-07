@@ -146,7 +146,7 @@ OUTPUT (in valid JSON format):
 prompt = PromptTemplate(template=template, input_variables=["context", "question"])
 
 # 7. LLM 정의
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-latest", temperature=0.85)
+llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest", temperature=0.85)
 
 # --- 출력 파서 및 체인 조립 ---
 
