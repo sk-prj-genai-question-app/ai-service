@@ -107,10 +107,10 @@ FastAPIはOpenAPI 3.0仕様に準拠したAPIドキュメントを自動的に�
     `.env`ファイルのAPIキーを環境変数として注入してコンテナを実行します。
     ```bash
     docker run -p 8000:8000 \
-    -e OPENAI_API_KEY="your_openai_api_key" \
-    -e GOOGLE_API_KEY="your_google_api_key" \
-    -e GROQ_API_KEY="your_groq_api_key" \
-    jlpt-ai-service:latest
+      -e OPENAI_API_KEY="your_openai_api_key" \
+      -e GOOGLE_API_KEY="your_google_api_key" \
+      -e GROQ_API_KEY="your_groq_api_key" \
+      jlpt-ai-service:latest
     ```
 
 ## 🤝 貢献
