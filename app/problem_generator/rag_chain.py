@@ -132,8 +132,8 @@ Problem Generation Rules:
 
 Explanation Format:
 - Each choice's explanation MUST be: "{{choice_number}}) {{choice_content}}: {{reason}}".
-- Each explanation for a choice MUST be separated by a newline character (
-).
+- Each explanation for a choice MUST be separated by the escaped newline sequence \\n (not actual newline characters).
+- Ensure all strings in the JSON output are properly escaped (use \\n for newlines, \\" for quotes, etc.).
 
 CONTEXT:
 {context}
